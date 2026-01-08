@@ -166,7 +166,7 @@ while True:
         print()
 
         path_display = os.getcwd().replace(os.path.expanduser("~"), "~")
-        shell_prompt = f"{colored.Fore.green}AI" if using_ai else f"{colored.Fore.sky_blue_1}shell"
+        shell_prompt = f"{colored.Fore.green}AI.sh" if using_ai else f"{colored.Fore.sky_blue_1}sh"
         shell_prompt += colored.Style.reset
         shell_prompt += f" ({path_display})"
 
@@ -299,6 +299,8 @@ while True:
                     if ai_cmd:
                         subprocess.run(ai_cmd, env=env_vars, shell=True, text=True)
                 else:
+                    proceed = False
+
                     if ai_cmd_split[0].lower() in ("sudo", "su"):
                         if hide_cmd:
                             print(f">> {ai_cmd}")
@@ -306,7 +308,9 @@ while True:
                         if not confirm(f"{colored.Fore.red}really execute as root{colored.Style.reset}"):
                             continue
 
-                    if not auto:
+                        proceed = True
+
+                    if not auto and not proceed:
                         if not confirm(f"{colored.Fore.green}execute{colored.Style.reset}"):
                             continue
 
