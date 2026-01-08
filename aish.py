@@ -137,49 +137,72 @@ signal.signal(signal.SIGINT, signal_handler)
 
 class TabCompleter(prompt_toolkit.completion.Completer):
     def get_completions(self, document, complete_event):
+        completion_style = "bg:ansiblack fg:ansiwhite"
+
         text = document.text_before_cursor
         words = text.strip().split()
 
+        # List of available commands (case-insensitive)
         commands = ("help", "connect", "disconnect", "auto", "hide")
 
-        # suggest commands if tab completing a non-path as the first word
-        if not words or len(words) == 1 and (not words[0].startswith(".") and not words[0].startswith(os.path.sep)):
+        # Suggest commands if first word is empty or not a path
+        if not words or (len(words) == 1 and not words[0].startswith('.') and not words[0].startswith(os.path.sep)):
             for cmd in commands:
                 if cmd.lower().startswith(text.lower()):
-                    yield prompt_toolkit.completion.Completion(cmd, start_position=-len(text))
+                    yield prompt_toolkit.completion.Completion(cmd, start_position=-len(text), style=completion_style)
 
-            # also add files in current path
-            for match in os.listdir():
-                if not words or match.startswith(words[0]):
-                    yield prompt_toolkit.completion.Completion(match, start_position=-len(text))
-            return
+            if len(words) == 0:
+                return
 
-        # Last word being completed
-        last_word = words[-1]
-
-        file_matches = []
+        # Try to do file completion on the last word
+        base_path = os.getcwd()
         try:
-            # Build the base path (if it's relative, use current directory)
-            base_path = os.getcwd()
-            if last_word.startswith('/'):
-                # Absolute path
-                path_to_search = os.path.expanduser(last_word)
+            # Determine what we're completing
+            if len(words) > 0:
+                last_word = words[-1]
             else:
-                # Relative path
-                path_to_search = os.path.join(base_path, os.path.expanduser(last_word))
+                last_word = ""
 
-            # Get directory listing and glob matches
-            for f in glob.glob(f"{path_to_search}*"):
-                if os.path.isdir(f) or os.path.isfile(f):
-                    if os.path.dirname(f) == base_path:
-                        f = os.path.basename(f)
+            # If there's no text or only whitespace, suggest current directory
+            if len(text) == 0 or text.isspace():
+                matches = os.listdir(base_path)
+                start_pos = 0
+            else:
+                # Check if the user typed a space after the last word → suggests files in current dir
+                if text.endswith(' '):
+                    # User has typed a space → treat as starting a new filename
+                    matches = os.listdir(base_path)
+                    start_pos = 0
+                else:
+                    # Otherwise, try to glob based on partial path
+                    if last_word.startswith('/') or last_word.startswith('~'):
+                        path_to_search = os.path.expanduser(last_word)
+                    else:
+                        path_to_search = os.path.join(base_path, last_word)
 
-                    file_matches.append(f.replace(os.path.expanduser("~"), "~"))
+                    matches = []
+                    pattern = f"{path_to_search}*"
+                    for f in glob.glob(pattern):
+                        if os.path.isdir(f) or os.path.isfile(f):
+                            # Show only basename if it's in current directory
+                            if os.path.dirname(f) == base_path:
+                                f = os.path.basename(f)
 
-            for match in file_matches:
-                yield prompt_toolkit.completion.Completion(match, start_position=-len(last_word))
+                            matches.append(f.replace(os.path.expanduser("~"), "~"))
+
+                    start_pos = -len(last_word)
+
+            # add trailing slash to directories
+            for index, match in enumerate(matches):
+                if os.path.isdir(match):
+                    matches[index] = match+"/"
+
+            # Yield all matching completions
+            for match in matches:
+                yield prompt_toolkit.completion.Completion(match, start_position=start_pos, style=completion_style)
+        
         except Exception as e:
-            pass  # Ignore errors during path lookup
+            pass
 
 using_ai = False
 auto = False
@@ -238,11 +261,14 @@ prompt_style = prompt_toolkit.styles.Style.from_dict({
 })
 
 session = prompt_toolkit.PromptSession(
-    completer=TabCompleter(),
+    completer=prompt_toolkit.completion.ThreadedCompleter(
+        TabCompleter()
+    ),
     history=prompt_toolkit.history.FileHistory(os.path.expanduser("~/.aish_history")),
     auto_suggest=prompt_toolkit.auto_suggest.AutoSuggestFromHistory(),
-    enable_history_search=True,
-    style=prompt_style
+    style=prompt_style,
+    complete_style=prompt_toolkit.shortcuts.CompleteStyle.COLUMN,
+    complete_while_typing=False
 )
 
 env_vars = os.environ.copy()
