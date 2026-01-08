@@ -29,11 +29,14 @@ import platform
 import sys
 import subprocess
 import signal
-import readline
+import prompt_toolkit
+import glob
 import platform
 import datetime
 import colored
 import openai
+
+from pygments.lexers.shell import BashLexer
 
 # --------
 # UTILITY FUNCTIONS
@@ -126,12 +129,51 @@ def signal_handler(sig, frame):
     pass
 signal.signal(signal.SIGINT, signal_handler)
 
-HISTFILE = os.path.expanduser("~/.aish_history")
-if os.path.exists(HISTFILE):
-    readline.read_history_file(HISTFILE)
+class TabCompleter(prompt_toolkit.completion.Completer):
+    def get_completions(self, document, complete_event):
+        text = document.text_before_cursor
+        words = text.strip().split()
 
-# enable tab completion
-readline.parse_and_bind("tab: complete")
+        commands = ("help", "connect", "disconnect", "auto", "hide")
+
+        # suggest commands if tab completing a non-path as the first word
+        if not words or len(words) == 1 and (not words[0].startswith(".") and not words[0].startswith(os.path.sep)):
+            for cmd in commands:
+                if cmd.lower().startswith(text.lower()):
+                    yield prompt_toolkit.completion.Completion(cmd, start_position=-len(text))
+
+            # also add files in current path
+            for match in os.listdir():
+                if not words or match.startswith(words[0]):
+                    yield prompt_toolkit.completion.Completion(match, start_position=-len(text))
+            return
+
+        # Last word being completed
+        last_word = words[-1]
+
+        file_matches = []
+        try:
+            # Build the base path (if it's relative, use current directory)
+            base_path = os.getcwd()
+            if last_word.startswith('/'):
+                # Absolute path
+                path_to_search = last_word
+            else:
+                # Relative path
+                path_to_search = os.path.join(base_path, last_word)
+
+            # Get directory listing and glob matches
+            for f in glob.glob(f"{path_to_search}*"):
+                if os.path.isdir(f) or os.path.isfile(f):
+                    if os.path.dirname(f) == base_path:
+                        f = os.path.basename(f)
+
+                    file_matches.append(f)
+
+            for match in file_matches:
+                yield prompt_toolkit.completion.Completion(match, start_position=-len(last_word))
+        except Exception as e:
+            pass  # Ignore errors during path lookup
 
 using_ai = False
 auto = False
@@ -183,16 +225,34 @@ except Exception as e:
     print_color(f"Failed to connect to AI! error: {e}", colored.Fore.red)
     print("normal shell mode engaged")
 
+prompt_style = prompt_toolkit.styles.Style.from_dict({
+    'connected': 'fg:green',
+    'disconnected': 'fg:skyblue',
+    'reset': 'fg:default',
+})
+
+session = prompt_toolkit.PromptSession(
+    completer=TabCompleter(),
+    history=prompt_toolkit.history.FileHistory(os.path.expanduser("~/.aish_history")),
+    style=prompt_style
+)
+
 while True:
     try:
         print()
 
         path_display = os.getcwd().replace(os.path.expanduser("~"), "~")
-        shell_prompt = f"{colored.Fore.green}AI.sh" if using_ai else f"{colored.Fore.sky_blue_1}sh"
-        shell_prompt += colored.Style.reset
-        shell_prompt += f" ({path_display})"
+        # shell_prompt = f"{colored.Fore.green}AI.sh" if using_ai else f"{colored.Fore.sky_blue_1}sh"
+        # shell_prompt += colored.Style.reset
+        # shell_prompt += f" ({path_display})"
 
-        cmd = input(f"{shell_prompt}> ")
+        # Build prompt text using HTML formatting
+        display_name = "<connected>AI.sh</connected>" if using_ai else "<disconnected>sh</disconnected>"
+        shell_prompt = prompt_toolkit.formatted_text.HTML(
+            f"{display_name} ({path_display})> "
+        )
+
+        cmd = session.prompt(shell_prompt, lexer=prompt_toolkit.lexers.PygmentsLexer(BashLexer))
         cmd_split = cmd.split(" ")
 
         match cmd:
@@ -232,17 +292,17 @@ while True:
                 print_color("disconnected", colored.Fore.sky_blue_1)
             case "help":
                 print("""
-    exit:       exit the shell
-    auto:       toggle auto execution mode (WARNING: dangerous! disables confirmation before running suggested commands. will still ask for confirmation when running root commands)
-    hide:       toggle command hiding (hides generated commands prior to running them)
-    connect:    reconnect to the AI in case a disconnection occured
-    disconnect: disconnect from the AI, switch to an AI-less shell
-    help:       display help
+exit:       exit the shell
+auto:       toggle auto execution mode (WARNING: dangerous! disables confirmation before running suggested commands. will still ask for confirmation when running root commands)
+hide:       toggle command hiding (hides generated commands prior to running them)
+connect:    reconnect to the AI in case a disconnection occured
+disconnect: disconnect from the AI, switch to an AI-less shell
+help:       display help
 
-    Type what you want the shell to do, then press enter. The AI will then generate a shell command and ask you if you want to run it.
-    You can also just type normal shell commands, which will run if the AI doesn't modify the command.
+Type what you want the shell to do, then press enter. The AI will then generate a shell command and ask you if you want to run it.
+You can also just type normal shell commands, which will run if the AI doesn't modify the command.
 
-    You can find and target files within the current folder (even nested folders) by prepending the filename with a '@'. Example: cat @aish.py will search for the file and then read it.
+You can find and target files within the current folder (even nested folders) by prepending the filename with a '@'. Example: cat @aish.py will search for the file and then read it.
     """.strip())
             case "":
                 pass
@@ -339,8 +399,8 @@ while True:
                     ai_cmd = process_cmd(ai_cmd)
                     if ai_cmd:
                         subprocess.run(ai_cmd, env=env_vars, shell=True, text=True)
+    except KeyboardInterrupt:
+        continue
     except Exception as e:
         print_color(f"error: {e}", colored.Fore.red)
         pass
-    finally:
-        readline.write_history_file(HISTFILE)
