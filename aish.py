@@ -295,10 +295,12 @@ while True:
                     print_color("connected", colored.Fore.green)
                 except Exception as e:
                     print_color(f"Failed to connect to AI! error: {e}", colored.Fore.red)
+                    print("Normal shell mode engaged. Type 'connect' to reconnect.")
                     continue
             case "disconnect":
                 if not using_ai:
                     print("already disconnected!")
+                    continue
 
                 using_ai = False
                 print_color("disconnected", colored.Fore.sky_blue_1)
