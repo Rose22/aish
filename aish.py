@@ -47,11 +47,13 @@ def confirm(prompt):
         else:
             print("please answer yes or no")
 
-def toggle_bool(thebool):
+def toggle_bool(thebool, description="feature"):
     if thebool:
         thebool = False
+        print(f"{colored.Fore.sky_blue_1}{description}{colored.Style.reset} turned off")
     else:
         thebool = True
+        print(f"{colored.Fore.sky_blue_1}{description}{colored.Style.reset} turned on")
 
     return thebool
 
@@ -168,17 +170,15 @@ while True:
             exit()
             break
         case "auto":
-            auto = toggle_bool(auto)
-            state = "on" if auto else "off"
-
-            print(f"automatic execution turned {state}")
-
-            if auto:
-                if confirm(f"{colored.Fore.red}Also hide commands before running them (DANGEROUS){colored.Style.reset}"):
-                    hide_cmd = True
-            else:
+            auto = toggle_bool(auto, "automatic command execution")
+            if not auto:
                 hide_cmd = False
+        case "hide":
+            if not auto:
+                print("turn on automatic execution first with 'auto'")
+                continue
 
+            hide_cmd = toggle_bool(hide_cmd, "command hiding")
         case "connect":
             if using_ai:
                 print("already connected!")
@@ -201,14 +201,17 @@ while True:
         case "help":
             print("""
 exit:       exit the shell
-auto:       turn on auto execution mode (WARNING: dangerous! disables confirmation before running suggested commands. will still ask for confirmation when running root commands)
+auto:       toggle auto execution mode (WARNING: dangerous! disables confirmation before running suggested commands. will still ask for confirmation when running root commands)
+hide:       toggle command hiding (hides generated commands prior to running them)
 connect:    reconnect to the AI in case a disconnection occured
 disconnect: disconnect from the AI, switch to an AI-less shell
 help:       display help
 
 Type what you want the shell to do, then press enter. The AI will then generate a shell command and ask you if you want to run it.
 You can also just type normal shell commands, which will run if the AI doesn't modify the command.
-""")
+
+You can find and target files within the current folder (even nested folders) by prepending the filename with a '@'. Example: cat @aish.py will search for the file and then read it.
+""".strip())
         case "":
             pass
         case _:
@@ -222,7 +225,7 @@ You can also just type normal shell commands, which will run if the AI doesn't m
             relevant_paths = []
             for word in cmd_split:
                 if word[0] == "@":
-                    print(f"targeting {word[1:]}")
+                    print(f"{colored.Fore.sky_blue_1}>> targeting {word[1:]}{colored.Style.reset}")
                     if not dir_tree:
                         dir_tree = recursive_list(".", max_depth=3)
 
