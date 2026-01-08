@@ -75,37 +75,8 @@ def process_cmd(cmd):
 
     return cmd
 
-def recursive_list_dirs(root_dir=".", max_depth=1):
-    """
-    Recursively list directories only (no files) up to max_depth levels deep.
-
-    Args:
-        root_dir (str): The root directory path.
-        max_depth (int): Maximum depth to traverse (default is 3).
-
-    Returns:
-        list: List of directory paths (strings).
-    """
-    directories = []
-
-    def _list_dirs(current_path, current_depth):
-        if current_depth > max_depth:
-            return
-
-        try:
-            # List all items in current directory
-            for item in os.listdir(current_path):
-                item_path = os.path.join(current_path, item)
-                if os.path.isdir(item_path):
-                    directories.append(item_path)
-                    # Recurse into subdirectory if depth allows
-                    _list_dirs(item_path, current_depth + 1)
-        except PermissionError:
-            # Skip directories we don't have permission to access
-            pass
-
-    _list_dirs(root_dir, 1)  # Start at depth 1 (root is level 0)
-    return directories
+# --------
+# INITIALIZATION
 
 # disable the Ctrl+C command so that the user can cancel running commands
 def signal_handler(sig, frame):
@@ -215,11 +186,11 @@ You can also just type normal shell commands, which will run if the AI doesn't m
             prompt = [
                 {
                     "role": "system",
-                    "content": ai_prompt
+                    "content": f"You are currently in directory `{os.getcwd()}`.\nUser's home directory is `{os.path.expanduser('~')}`.\nThe current date is {datetime.datetime.now().strftime('%b %d %Y %H:%M:%S')}.\nFiles in current directory: {os.listdir()}.\nSystem information: {sys_info}"
                 },
                 {
                     "role": "system",
-                    "content": f"You are currently in directory `{os.getcwd()}`.\nUser's home directory is `{os.path.expanduser('~')}`.\nThe current date is {datetime.datetime.now().strftime('%b %d %Y %H:%M:%S')}.\nFiles in current directory: {os.listdir()}.\nSystem information: {sys_info}"
+                    "content": ai_prompt
                 },
                 {
                     "role": "user",
