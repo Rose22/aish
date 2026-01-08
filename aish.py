@@ -80,6 +80,9 @@ def signal_handler(sig, frame):
     pass
 signal.signal(signal.SIGINT, signal_handler)
 
+# enable tab completion
+readline.parse_and_bind("tab: complete")
+
 using_ai = False
 auto = False
 hide_cmd = False
