@@ -311,11 +311,6 @@ You can find and target files within the current folder (even nested folders) by
             case "":
                 pass
             case _:
-                if not using_ai:
-                    # just execute the command like a normal shell
-                    os.system(cmd)
-                    continue
-
                 # recursively retrieve the file structure from the current directory and use it to find and target any paths the user has specified with a @
                 dir_tree = False
                 relevant_paths = []
@@ -328,6 +323,19 @@ You can find and target files within the current folder (even nested folders) by
                         for item in dir_tree:
                             if word[1:] in item:
                                 relevant_paths.append(item)
+
+                if not using_ai:
+                    # just execute the command like a normal shell
+
+                    # support basic file targeting
+                    if relevant_paths:
+                        for path in relevant_paths:
+                            print(path)
+                        # dont execute the command if files were targeted with @
+                        continue
+
+                    os.system(cmd)
+                    continue
 
                 if relevant_paths:
                     relevant_paths = f"\nYou can find target files at one of these paths: {relevant_paths}"
