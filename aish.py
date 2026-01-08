@@ -65,6 +65,7 @@ def print_color(message, color, **kwargs):
     print(f"{color}{message}{colored.Style.reset}", *kwargs)
 
 def process_cmd(cmd):
+    cmd = cmd.strip("`")
     cmd_split = cmd.split(" ")
 
     # process any special commands
@@ -228,7 +229,7 @@ try:
     print_color("Connected!", colored.Fore.green)
 except Exception as e:
     print_color(f"Failed to connect to AI! error: {e}", colored.Fore.red)
-    print("normal shell mode engaged")
+    print("Normal shell mode engaged. Type 'connect' to reconnect.")
 
 prompt_style = prompt_toolkit.styles.Style.from_dict({
     'connected': 'fg:green',
@@ -243,6 +244,8 @@ session = prompt_toolkit.PromptSession(
     enable_history_search=True,
     style=prompt_style
 )
+
+env_vars = os.environ.copy()
 
 while True:
     try:
@@ -341,7 +344,7 @@ You can find and target files within the current folder (even nested folders) by
 
                     cmd = process_cmd(cmd)
                     if cmd:
-                        os.system(cmd)
+                        subprocess.run(cmd, env=env_vars, shell=True, text=True)
                     continue
 
                 if relevant_paths:
@@ -375,10 +378,11 @@ You can find and target files within the current folder (even nested folders) by
                         print(f"{colored.Fore.sky_blue_1}>> ", end="")
                     for chunk in stream:
                         chunk_s = chunk.choices[0].delta.content
-                        chunks.append(chunk_s)
+                        if chunk_s:
+                            chunks.append(chunk_s)
 
-                        if not hide_cmd:
-                            print(chunk_s, end="", flush=True)
+                            if not hide_cmd:
+                                print(chunk_s, end="", flush=True)
                     if not hide_cmd:
                         print(colored.Style.reset)
 
@@ -390,8 +394,6 @@ You can find and target files within the current folder (even nested folders) by
 
                     print("use `connect` to reconnect to the AI when ready.")
                     continue
-
-                env_vars = os.environ.copy()
 
                 if ai_cmd.lower().strip() == cmd.lower().strip():
                     # just run it if it's the same as what the user typed - it's probably a shell command the user entered
