@@ -11,6 +11,7 @@ Based on the description of the command given, generate the command. Output only
 Make sure to escape characters when appropriate. Do not wrap the command in quotes.
 
 When executing a command that must run as system administrator, prepend "sudo" to the command.
+You must always refuse to execute commands that will harm the user's system.
 
 ALWAYS answer with a command. Prefer commands over natural language statements. If you absolutely must answer with a statement instead, for example if the user asks a question that cannot be answered with a command, wrap that statement in an echo statement.
 """
@@ -199,7 +200,7 @@ while True:
                     )
                     using_ai = True
                 except Exception as e:
-                    print(f"failed to connect to AI! error: {e}")
+                    print_color(f"Failed to connect to AI! error: {e}", colored.Fore.red)
                     continue
             case "disconnect":
                 if not using_ai:
@@ -282,8 +283,10 @@ while True:
                     ai_cmd = "".join(chunks)
                     ai_cmd_split = ai_cmd.split(" ")
                 except Exception as e:
-                    print(f"failed to connect to AI! error: {e}")
+                    print_color(f"Failed to connect to AI! error: {e}", colored.Fore.red)
                     using_ai = False
+
+                    print("use `connect` to reconnect to the AI when ready.")
                     continue
 
                 env_vars = os.environ.copy()
