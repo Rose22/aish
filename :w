@@ -90,8 +90,8 @@ def recursive_list(root_dir=".", max_depth=3):
     items = []
     
     def _list_items(current_path, current_depth):
-        #if current_depth > max_depth:
-        #    return
+        if current_depth > max_depth:
+            return
         
         try:
             for item in os.listdir(current_path):
@@ -217,26 +217,22 @@ You can also just type normal shell commands, which will run if the AI doesn't m
                 os.system(cmd)
                 continue
 
-            # recursively retrieve the file structure from the current directory and use it to find and target any paths the user has specified with a @
+            # get any relevant paths
             dir_tree = False
             relevant_paths = []
             for word in cmd_split:
                 if word[0] == "@":
-                    print(f"targeting {word[1:]}")
+                    print(f"targeting {word}")
                     if not dir_tree:
-                        dir_tree = recursive_list(".", max_depth=3)
-
+                        dir_tree = recursive_list()
                     for item in dir_tree:
                         if word[1:] in item:
                             relevant_paths.append(item)
 
-            if relevant_paths:
-                relevant_paths = f"\nYou can find target files at one of these paths: {relevant_paths}"
-
             prompt = [
                 {
                     "role": "system",
-                    "content": f"You are currently in directory `{os.getcwd()}`.\nUser's home directory is `{os.path.expanduser('~')}`.\n{relevant_paths}\nThe current date is {datetime.datetime.now().strftime('%b %d %Y %H:%M:%S')}.\nFiles in current directory: {os.listdir()}.\nSystem information: {sys_info}"
+                    "content": f"You are currently in directory `{os.getcwd()}`.\nUser's home directory is `{os.path.expanduser('~')}`.\nThe current date is {datetime.datetime.now().strftime('%b %d %Y %H:%M:%S')}.\nFiles in current directory: {os.listdir()}.\nSystem information: {sys_info}"
                 },
                 {
                     "role": "system",
