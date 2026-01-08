@@ -157,10 +157,10 @@ class TabCompleter(prompt_toolkit.completion.Completer):
             base_path = os.getcwd()
             if last_word.startswith('/'):
                 # Absolute path
-                path_to_search = last_word
+                path_to_search = os.path.expanduser(last_word)
             else:
                 # Relative path
-                path_to_search = os.path.join(base_path, last_word)
+                path_to_search = os.path.join(base_path, os.path.expanduser(last_word))
 
             # Get directory listing and glob matches
             for f in glob.glob(f"{path_to_search}*"):
@@ -168,7 +168,7 @@ class TabCompleter(prompt_toolkit.completion.Completer):
                     if os.path.dirname(f) == base_path:
                         f = os.path.basename(f)
 
-                    file_matches.append(f)
+                    file_matches.append(f.replace(os.path.expanduser("~"), "~"))
 
             for match in file_matches:
                 yield prompt_toolkit.completion.Completion(match, start_position=-len(last_word))
@@ -334,7 +334,9 @@ You can find and target files within the current folder (even nested folders) by
                         # dont execute the command if files were targeted with @
                         continue
 
-                    os.system(cmd)
+                    cmd = process_cmd(cmd)
+                    if cmd:
+                        os.system(cmd)
                     continue
 
                 if relevant_paths:
