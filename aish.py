@@ -51,7 +51,6 @@ def confirm(prompt):
 def toggle_bool(thebool, description="feature"):
     if thebool:
         thebool = False
-        print_color(description, colored.Fore.sky_blue_1)
         print(f"{colored.Fore.sky_blue_1}{description}{colored.Style.reset} turned off")
     else:
         thebool = True
@@ -159,7 +158,7 @@ try:
 
     print_color("Connected!", colored.Fore.green)
 except Exception as e:
-    print_color("Failed to connect to AI! error: {e}", colored.Fore.red)
+    print_color(f"Failed to connect to AI! error: {e}", colored.Fore.red)
     print("normal shell mode engaged")
 
 while True:
