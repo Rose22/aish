@@ -254,7 +254,9 @@ while True:
             f"{display_name} ({path_display})> "
         )
 
-        cmd = session.prompt(shell_prompt, lexer=prompt_toolkit.lexers.PygmentsLexer(BashLexer))
+        #cmd = session.prompt(shell_prompt, lexer=prompt_toolkit.lexers.PygmentsLexer(BashLexer))
+        # lexer disabled for now
+        cmd = session.prompt(shell_prompt)
         cmd_split = cmd.split(" ")
 
         match cmd:
