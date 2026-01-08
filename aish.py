@@ -147,9 +147,9 @@ sys_info = {
 # MAIN PROGRAM
 client = openai.OpenAI(base_url=api_url, api_key=api_key)
 
-print("Welcome to AI Shell! type 'help' for help. Use 'auto' to engage automatic mode.")
+print_color("Welcome to AIsh! type 'help' for help. Use 'auto' to engage automatic mode.", colored.Fore.yellow)
 
-print("Connecting to AI..")
+print_color("Connecting to AI..", colored.Fore.sky_blue_1)
 try:
     client.chat.completions.create(
         model="model",
@@ -157,9 +157,9 @@ try:
     )
     using_ai = True
 
-    print("Connected!")
+    print_color("Connected!", colored.Fore.green)
 except Exception as e:
-    print(f"{colored.Fore.red}Failed to connect to AI! error: {e}{colored.Style.reset}")
+    print_color("Failed to connect to AI! error: {e}", colored.Fore.red)
     print("normal shell mode engaged")
 
 while True:
@@ -199,6 +199,7 @@ while True:
                         messages=check_prompt
                     )
                     using_ai = True
+                    print_color("connected", colored.Fore.green)
                 except Exception as e:
                     print_color(f"Failed to connect to AI! error: {e}", colored.Fore.red)
                     continue
@@ -207,6 +208,7 @@ while True:
                     print("already disconnected!")
 
                 using_ai = False
+                print_color("disconnected", colored.Fore.sky_blue_1)
             case "help":
                 print("""
     exit:       exit the shell
