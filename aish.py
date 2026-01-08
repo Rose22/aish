@@ -43,7 +43,7 @@ from pygments.lexers.shell import BashLexer
 
 def confirm(prompt):
     while True:
-        confirmation = input(f"{prompt}? (Y/n)> ").lower()
+        confirmation = input(f"{prompt}? (y/n)> ").lower()
         if confirmation in ("y", "yes"):
             return True
         elif confirmation in ("n", "no"):
@@ -234,6 +234,8 @@ prompt_style = prompt_toolkit.styles.Style.from_dict({
 session = prompt_toolkit.PromptSession(
     completer=TabCompleter(),
     history=prompt_toolkit.history.FileHistory(os.path.expanduser("~/.aish_history")),
+    auto_suggest=prompt_toolkit.auto_suggest.AutoSuggestFromHistory(),
+    enable_history_search=True,
     style=prompt_style
 )
 
@@ -393,7 +395,7 @@ You can find and target files within the current folder (even nested folders) by
                         proceed = True
 
                     if not auto and not proceed:
-                        if not confirm(f"{colored.Fore.green}execute{colored.Style.reset}"):
+                        if not prompt_toolkit.shortcuts.confirm(f"execute?"):
                             continue
 
                     ai_cmd = process_cmd(ai_cmd)
