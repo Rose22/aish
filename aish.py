@@ -6,7 +6,7 @@ api_url = "http://localhost:5001/v1"
 api_key = "dummy"
 
 ai_prompt = """
-You are AIsh, an AI shell assistant. You live in a linux shell, helping the user convert natural language into CLI commands.
+You are AI.sh, an AI shell assistant. You live in a linux shell, helping the user convert natural language into CLI commands.
 Based on the description of the command given, generate the command. Output only the command and nothing else. Output only one line.
 Make sure to escape characters when appropriate. Do not wrap the command in quotes.
 
@@ -126,12 +126,34 @@ def signal_handler(sig, frame):
     pass
 signal.signal(signal.SIGINT, signal_handler)
 
+HISTFILE = os.path.expanduser("~/.aish_history")
+if os.path.exists(HISTFILE):
+    readline.read_history_file(HISTFILE)
+
 # enable tab completion
 readline.parse_and_bind("tab: complete")
 
 using_ai = False
 auto = False
 hide_cmd = False
+
+# get most important env variables
+env_vars_to_pass_on = (
+    "USER",
+    "HOME",
+    "PATH",
+    "TERM",
+    "COLORTERM",
+    "LANG",
+    "EDITOR",
+    "XDG_CONFIG_HOME",
+    "XDG_DATA_HOME",
+    "XDG_CURRENT_DESKTOP",
+)
+env_vars_display = {}
+for key, value in os.environ.items():
+    if key in env_vars_to_pass_on:
+        env_vars_display[key] = value
 
 sys_info = {
     "os": platform.system(),
@@ -146,7 +168,7 @@ sys_info = {
 # MAIN PROGRAM
 client = openai.OpenAI(base_url=api_url, api_key=api_key)
 
-print_color("Welcome to AIsh! type 'help' for help. Use 'auto' to engage automatic mode.", colored.Fore.yellow)
+print_color("Welcome to AI.sh! type 'help' for help. Use 'auto' to engage automatic mode.", colored.Fore.yellow)
 
 print_color("Connecting to AI..", colored.Fore.sky_blue_1)
 try:
@@ -249,7 +271,7 @@ while True:
                 prompt = [
                     {
                         "role": "system",
-                        "content": f"You are currently in directory `{os.getcwd()}`.\nUser's home directory is `{os.path.expanduser('~')}`.\n{relevant_paths}\nThe current date is {datetime.datetime.now().strftime('%b %d %Y %H:%M:%S')}.\nFiles in current directory: {os.listdir()}.\nSystem information: {sys_info}"
+                        "content": f"You are currently in directory `{os.getcwd()}`.\nUser's home directory is `{os.path.expanduser('~')}`.\n{relevant_paths}\nEnvironment variables: {env_vars_display}\nThe current date is {datetime.datetime.now().strftime('%b %d %Y %H:%M:%S')}.\nFiles in current directory: {os.listdir()}.\nSystem information: {sys_info}"
                     },
                     {
                         "role": "system",
@@ -320,3 +342,5 @@ while True:
     except Exception as e:
         print_color(f"error: {e}", colored.Fore.red)
         pass
+    finally:
+        readline.write_history_file(HISTFILE)
