@@ -71,6 +71,8 @@ def process_cmd(cmd):
             target_path = os.path.expanduser(" ".join(cmd_split[1:]))
             os.chdir(target_path)
             return False
+        case "exit":
+            exit()
 
     # substitute certain commands for different ones
     for orig, subst in substitutions.items():
