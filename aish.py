@@ -64,7 +64,11 @@ def process_cmd(cmd):
     match cmd_split[0].lower():
         case "cd":
             # actually change directory
-            os.chdir(" ".join(cmd_split[1:]))
+            target_path = os.path.expanduser(" ".join(cmd_split[1:]))
+            try:
+                os.chdir(target_path)
+            except Exception as e:
+                print(f"failed to change directory: {e}")
             return False
 
     # substitute certain commands for different ones
