@@ -6,7 +6,7 @@ api_url = "http://localhost:5001/v1"
 api_key = "dummy"
 
 ai_prompt = """
-You live in a linux shell, helping the user convert natural language into CLI commands.
+You are AIsh, an AI shell assistant. You live in a linux shell, helping the user convert natural language into CLI commands.
 Based on the description of the command given, generate the command. Output only the command and nothing else. Output only one line.
 Make sure to escape characters when appropriate. Do not wrap the command in quotes.
 
