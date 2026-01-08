@@ -72,6 +72,11 @@ def process_cmd(cmd):
         case "cd":
             # actually change directory
             target_path = os.path.expanduser(" ".join(cmd_split[1:]))
+
+            # default to home dir upon "cd" command without a target dir
+            if not target_path:
+                target_path = os.path.expanduser("~")
+
             os.chdir(target_path)
             return False
         case "exit":
