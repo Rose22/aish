@@ -2,11 +2,6 @@
 
 # ----------
 # SETTINGS
-api_url = "http://localhost:5001/v1"
-api_key = "dummy"
-autoconnect = True
-show_intro = True
-
 
 substitutions = {
     "ls": "ls --color",
