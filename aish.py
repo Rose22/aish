@@ -255,7 +255,7 @@ except Exception as e:
     print("Normal shell mode engaged. Type 'connect' to reconnect.")
 
 prompt_style = prompt_toolkit.styles.Style.from_dict({
-    'connected': 'fg:green',
+    'connected': 'fg:ansigreen',
     'disconnected': 'fg:skyblue',
     'reset': 'fg:default',
 })
