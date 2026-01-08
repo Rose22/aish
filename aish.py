@@ -219,7 +219,7 @@ You can also just type normal shell commands, which will run if the AI doesn't m
                 },
                 {
                     "role": "system",
-                    "content": f"You are currently in directory `{os.getcwd()}`.\nUser's home directory is `{os.path.expanduser('~')}`.\nThe current date is {datetime.datetime.now().strftime('%b %d %Y %H:%M:%S')}.\nFiles in current directory: {os.listdir('.')}.\nSystem information: {sys_info}"
+                    "content": f"You are currently in directory `{os.getcwd()}`.\nUser's home directory is `{os.path.expanduser('~')}`.\nThe current date is {datetime.datetime.now().strftime('%b %d %Y %H:%M:%S')}.\nFiles in current directory: {os.listdir()}.\nSystem information: {sys_info}"
                 },
                 {
                     "role": "user",
