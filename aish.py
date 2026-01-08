@@ -24,12 +24,12 @@ check_prompt = [{"role": "system", "content": "say hi"}]
 # --------
 # IMPORTS
 import os
+import platform
 import sys
 import subprocess
 import signal
 import readline
 import platform
-import distro
 import datetime
 import colored
 import openai
@@ -87,6 +87,15 @@ using_ai = False
 auto = False
 hide_cmd = False
 
+sys_info = {
+    "os": platform.system(),
+    "os_release": platform.release(),
+    "platform": platform.platform(),
+    "architecture": platform.machine() if platform.machine() else "unknown",
+    "hostname": platform.node(),
+    "system_root": os.listdir("/"),
+}
+
 # -------------
 # MAIN PROGRAM
 client = openai.OpenAI(base_url=api_url, api_key=api_key)
@@ -109,8 +118,10 @@ except Exception as e:
 while True:
     print()
 
+    path_display = os.getcwd().replace(os.path.expanduser("~"), "~")
     shell_prompt = f"{colored.Fore.green}AI" if using_ai else f"{colored.Fore.sky_blue_1}shell"
     shell_prompt += colored.Style.reset
+    shell_prompt += f" ({path_display})"
 
     cmd = input(f"{shell_prompt}> ")
     cmd_split = cmd.split(" ")
@@ -176,7 +187,7 @@ You can also just type normal shell commands, which will run if the AI doesn't m
                 },
                 {
                     "role": "system",
-                    "content": f"User's OS: {platform.system()} ({distro.info().get('id')}). You are currently in directory `{os.getcwd()}`. User's home directory is `{os.path.expanduser('~')}`. The current date is {datetime.datetime.now()}. Files in current directory: {os.listdir()}"
+                    "content": f"You are currently in directory `{os.getcwd()}`.\nUser's home directory is `{os.path.expanduser('~')}`.\nThe current date is {datetime.datetime.now()}.\nFiles in current directory: {os.listdir()}.\nSystem information: {sys_info}"
                 },
                 {
                     "role": "user",
