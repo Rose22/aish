@@ -4,17 +4,9 @@
 # SETTINGS
 api_url = "http://localhost:5001/v1"
 api_key = "dummy"
+autoconnect = True
+show_intro = True
 
-ai_prompt = """
-You are AI.sh, an AI shell assistant. You live in a linux shell, helping the user convert natural language into CLI commands.
-Based on the description of the command given, generate the command. Output only the command and nothing else. Output only one line.
-Make sure to escape characters when appropriate. Do not wrap the command in quotes.
-
-When executing a command that must run as system administrator, prepend "sudo" to the command.
-You must ALWAYS refuse to execute commands that will harm the user's system.
-
-ALWAYS answer with a command. Prefer commands over natural language statements. If you absolutely must answer with a statement instead, for example if the user asks a question that cannot be answered with a command, wrap that statement in an echo statement.
-"""
 
 substitutions = {
     "ls": "ls --color",
@@ -24,6 +16,7 @@ check_prompt = [{"role": "system", "content": "say hi"}]
 
 # --------
 # IMPORTS
+import yaml
 import os
 import platform
 import sys
@@ -93,6 +86,26 @@ def process_cmd(cmd):
 
     return cmd
 import os
+
+def check_connect(client):
+    print_color("Connecting to AI..", colored.Fore.sky_blue_1)
+
+    try:
+        client.chat.completions.create(
+            model="model",
+            messages=check_prompt
+        )
+        using_ai = True
+
+        print_color("Connected!", colored.Fore.green)
+
+        return True
+
+    except Exception as e:
+        print_color(f"Failed to connect to AI! error: {e}", colored.Fore.red)
+        print("Normal shell mode engaged. Type 'connect' to reconnect.")
+
+        return False
 
 def recursive_list(root_dir=".", max_depth=3):
     """
@@ -204,6 +217,37 @@ class TabCompleter(prompt_toolkit.completion.Completer):
         except Exception as e:
             pass
 
+# load config
+default_conf_data = {
+            "api_url": "http://localhost:12434/v1",
+            "api_key": "key_here",
+            "autoconnect": True,
+            "show_intro": True,
+            "prompt": """
+You are AI.sh, an AI shell assistant. You live in a linux shell, helping the user convert natural language into CLI commands.
+Based on the description of the command given, generate the command. Output only the command and nothing else. Output only one line.
+Make sure to escape characters when appropriate. Do not wrap the command in quotes.
+
+When executing a command that must run as system administrator, prepend "sudo" to the command.
+You must ALWAYS refuse to execute commands that will harm the user's system.
+
+ALWAYS answer with a command. Prefer commands over natural language statements. If you absolutely must answer with a statement instead, for example if the user asks a question that cannot be answered with a command, wrap that statement in an echo statement.
+"""
+}
+
+conf_path = os.path.expanduser(os.path.join("~", ".aish.yml"))
+if not os.path.exists(conf_path):
+    with open(conf_path, 'w') as f:
+        # default config data
+        f.write(yaml.dump(default_conf_data))
+
+try:
+    with open(conf_path, 'r') as f:
+        config = yaml.safe_load(f)
+except Exception as e:
+    print_color(f"warning: config wasn't loaded (error: {e}).\ndefaulting to default settings.", colored.Fore.red)
+    config = default_conf_data
+
 using_ai = False
 auto = False
 hide_cmd = False
@@ -237,22 +281,13 @@ sys_info = {
 
 # -------------
 # MAIN PROGRAM
-client = openai.OpenAI(base_url=api_url, api_key=api_key)
+client = openai.OpenAI(base_url=config.get("api_url"), api_key=config.get("api_key"))
 
-print_color("Welcome to AI.sh! type 'help' for help. Use 'auto' to engage automatic mode.", colored.Fore.yellow)
+if config.get("show_intro"):
+    print_color("Welcome to AI.sh! type 'help' for help. Use 'auto' to engage automatic mode.", colored.Fore.yellow)
 
-print_color("Connecting to AI..", colored.Fore.sky_blue_1)
-try:
-    client.chat.completions.create(
-        model="model",
-        messages=check_prompt
-    )
-    using_ai = True
-
-    print_color("Connected!", colored.Fore.green)
-except Exception as e:
-    print_color(f"Failed to connect to AI! error: {e}", colored.Fore.red)
-    print("Normal shell mode engaged. Type 'connect' to reconnect.")
+if config.get("autoconnect"):
+    using_ai = check_connect(client)
 
 prompt_style = prompt_toolkit.styles.Style.from_dict({
     'connected': 'fg:ansigreen',
@@ -275,8 +310,6 @@ env_vars = os.environ.copy()
 
 while True:
     try:
-        print()
-
         path_display = os.getcwd().replace(os.path.expanduser("~"), "~")
         # shell_prompt = f"{colored.Fore.green}AI.sh" if using_ai else f"{colored.Fore.sky_blue_1}sh"
         # shell_prompt += colored.Style.reset
@@ -312,17 +345,7 @@ while True:
                     print("already connected!")
                     continue
 
-                try:
-                    client.chat.completions.create(
-                        model="model",
-                        messages=check_prompt
-                    )
-                    using_ai = True
-                    print_color("connected", colored.Fore.green)
-                except Exception as e:
-                    print_color(f"Failed to connect to AI! error: {e}", colored.Fore.red)
-                    print("Normal shell mode engaged. Type 'connect' to reconnect.")
-                    continue
+                using_ai = check_connect(client)
             case "disconnect":
                 if not using_ai:
                     print("already disconnected!")
@@ -347,6 +370,13 @@ You can find and target files within the current folder (even nested folders) by
             case "":
                 pass
             case _:
+                # parse one-word commands
+                if len(cmd_split) == 1:
+                    match cmd_split[0]:
+                        case "cd":
+                            os.chdir(os.path.expanduser("~"))
+                            continue
+
                 # recursively retrieve the file structure from the current directory and use it to find and target any paths the user has specified with a @
                 dir_tree = False
                 relevant_paths = []
@@ -385,7 +415,7 @@ You can find and target files within the current folder (even nested folders) by
                     },
                     {
                         "role": "system",
-                        "content": ai_prompt
+                        "content": config.get("prompt")
                     },
                     {
                         "role": "user",
@@ -453,3 +483,5 @@ You can find and target files within the current folder (even nested folders) by
     except Exception as e:
         print_color(f"error: {e}", colored.Fore.red)
         pass
+    finally:
+        print()
