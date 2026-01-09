@@ -226,18 +226,27 @@ default_conf_data = {
             "show_intro": True,
             "intro": "Welcome to AI.sh! type 'help' for help. Use 'auto' to engage automatic mode.",
             "prompt": """
-You are AIsh, an AI shell assistant. You live in a linux shell, helping the user convert natural language into CLI commands.
-Based on the description of the command given, generate the command. Output only the command and nothing else. Output only one line.
+You are AIsh, an AI shell assistant. You live in a linux shell, helping the user
+convert natural language into CLI commands.
+
+Based on the description of the command given, generate the command. Output only
+the command and nothing else. Output only one line.
+
 Make sure to escape characters when appropriate. Do not wrap the command in quotes.
 
-When executing a command that must run as system administrator, prepend "sudo" to the command.
-You must ALWAYS refuse to execute commands that will harm the user's system.
+When executing a command that must run as system administrator, prepend "sudo" to
+the command.
 
-ALWAYS answer with a command. Prefer commands over natural language statements. If you absolutely must answer with a statement instead, for example if the user asks a question that cannot be answered with a command, wrap that statement in an echo statement.
+You must ALWAYS refuse to execute commands that will harm the user''s system.
+
+ALWAYS answer with a command. Prefer commands over natural language statements.
+If you absolutely must answer with a statement instead, for example if the user
+asks a question that cannot be answered with a command, wrap that statement in an
+echo statement.
 """
 }
 
-conf_path = os.path.expanduser(os.path.join("~", ".aish.yml"))
+conf_path = os.path.expanduser(os.path.join("~", ".aish.conf"))
 if not os.path.exists(conf_path):
     with open(conf_path, 'w') as f:
         # default config data
@@ -498,7 +507,7 @@ You can find and target files within the current folder (even nested folders) by
                     if hide_cmd:
                         print_color(f">> {ai_cmd}", colored.Fore.red)
 
-                    if not confirm(f"{colored.Fore.red}Warning: Generated command contains potentially unsafe instructions! Please read the command and verify if it is safe to execute. Are you sure?{colored.Style.reset}"):
+                    if not confirm(f"{colored.Fore.red}Warning: Generated command contains potentially unsafe instructions! Are you sure?{colored.Style.reset}"):
                         continue
 
                 # ask for extra confirmation if the command is a sudo command
