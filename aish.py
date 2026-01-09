@@ -217,7 +217,7 @@ default_conf_data = {
             "intro": "Welcome to AI.sh! type 'help' for help. Use 'auto' to engage automatic mode.",
             "prompt": """
 You are AI.sh, an AI shell assistant.
-You must only output executable shell commands.
+You MUST ONLY output executable shell commands.
 Do NOT include any explanation, comments, or Markdown formatting.
 Output only the command on one line.
 """
