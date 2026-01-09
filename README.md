@@ -12,5 +12,7 @@ You can also disconnect from the AI and use it like a normal shell. Then reconne
 
 <img width="965" height="660" alt="image" src="https://github.com/user-attachments/assets/04b5b197-972b-478e-bcb6-4f4b1a2ff744" />
 
+<img width="965" height="660" alt="image" src="https://github.com/user-attachments/assets/09e0bcf4-e23d-4b2a-8aeb-b695b2a8072c" />
+
 <img width="742" height="518" alt="image" src="https://github.com/user-attachments/assets/36a00e6d-92bf-49a0-bbd1-3cd0f30575a1" />
 
