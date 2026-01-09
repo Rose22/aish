@@ -100,7 +100,7 @@ def check_connect(client, config):
 
     except Exception as e:
         print_color(f"Failed to connect to AI! error: {e}", colored.Fore.red)
-        print("Normal shell mode engaged. Type 'connect' to reconnect.")
+        print("Falling back to normal shell. Type 'connect' to reconnect.")
 
         return False
 
@@ -224,7 +224,7 @@ default_conf_data = {
             "api_model": "qwen3",
             "autoconnect": True,
             "show_intro": True,
-            "intro": "Welcome to AI.sh! type 'help' for help. Use 'auto' to engage automatic mode.",
+            "intro": f"Welcome to AI.sh! type 'help' for help. Use 'auto' to engage automatic mode.\nThe AI.sh configuration file is here: {os.path.expanduser('~')}/.aish.conf\nIf you use a graphical file manager, you may need to show hidden files in order to see the file.\nPlease edit the configuration file to suit your preferences, and to set up the AI connection!",
             "prompt": """
 You are AI.sh, an AI shell assistant. You live in a linux shell, helping the user convert natural language into CLI commands.
 
