@@ -17,9 +17,9 @@ import platform
 import sys
 import subprocess
 import signal
+import traceback
 import prompt_toolkit
 import glob
-import platform
 import datetime
 import colored
 import openai
@@ -67,9 +67,10 @@ def process_cmd(cmd):
                 target_path = os.path.expanduser("~")
 
             os.chdir(target_path)
-            return False
+            return None
         case "exit":
             exit()
+            return None
 
     # substitute certain commands for different ones
     for orig, subst in substitutions.items():
@@ -82,12 +83,12 @@ def process_cmd(cmd):
     return cmd
 import os
 
-def check_connect(client):
+def check_connect(client, config):
     print_color("Connecting to AI..", colored.Fore.sky_blue_1)
 
     try:
         client.chat.completions.create(
-            model="model",
+            model=config.get("api_model"),
             messages=check_prompt
         )
         using_ai = True
@@ -102,7 +103,7 @@ def check_connect(client):
 
         return False
 
-def recursive_list(root_dir=".", max_depth=3):
+def recursive_list(root_dir=".", max_depth=5):
     """
     Recursively list files and directories up to max_depth levels deep.
     
@@ -116,20 +117,14 @@ def recursive_list(root_dir=".", max_depth=3):
     items = []
     
     def _list_items(current_path, current_depth):
-        #if current_depth > max_depth:
-        #    return
-        
         try:
-            for item in os.listdir(current_path):
-                item_path = os.path.join(current_path, item)
-                items.append(item_path)  # Add the path regardless of type
-                
-                # If it's a directory, go deeper (if allowed)
-                if os.path.isdir(item_path) and current_depth < max_depth:
-                    _list_items(item_path, current_depth + 1)
-                    
-        except PermissionError:
-            # Skip inaccessible directories
+            with os.scandir(current_path) as folder:
+                for file in folder:
+                    items.append(file.path)
+                    if file.is_dir() and current_depth < max_depth:
+                        _list_items(file.path, current_depth + 1)
+        except:
+            # Skip inaccessible things
             pass
     
     _list_items(root_dir, 0)  # Start at depth 0 (root)
@@ -216,8 +211,10 @@ class TabCompleter(prompt_toolkit.completion.Completer):
 default_conf_data = {
             "api_url": "http://localhost:12434/v1",
             "api_key": "key_here",
+            "api_model": "qwen3",
             "autoconnect": True,
             "show_intro": True,
+            "intro": "Welcome to AI.sh! type 'help' for help. Use 'auto' to engage automatic mode.",
             "prompt": """
 You are AI.sh, an AI shell assistant. You live in a linux shell, helping the user convert natural language into CLI commands.
 Based on the description of the command given, generate the command. Output only the command and nothing else. Output only one line.
@@ -279,10 +276,10 @@ sys_info = {
 client = openai.OpenAI(base_url=config.get("api_url"), api_key=config.get("api_key"))
 
 if config.get("show_intro"):
-    print_color("Welcome to AI.sh! type 'help' for help. Use 'auto' to engage automatic mode.", colored.Fore.yellow)
+    print_color(config.get("intro"), colored.Fore.yellow)
 
 if config.get("autoconnect"):
-    using_ai = check_connect(client)
+    using_ai = check_connect(client, config)
 
 prompt_style = prompt_toolkit.styles.Style.from_dict({
     'connected': 'fg:ansigreen',
@@ -306,11 +303,7 @@ env_vars = os.environ.copy()
 while True:
     try:
         path_display = os.getcwd().replace(os.path.expanduser("~"), "~")
-        # shell_prompt = f"{colored.Fore.green}AI.sh" if using_ai else f"{colored.Fore.sky_blue_1}sh"
-        # shell_prompt += colored.Style.reset
-        # shell_prompt += f" ({path_display})"
 
-        # Build prompt text using HTML formatting
         display_name = "<connected>AI.sh</connected>" if using_ai else "<disconnected>sh</disconnected>"
         shell_prompt = prompt_toolkit.formatted_text.HTML(
             f"{display_name} ({path_display})> "
@@ -324,11 +317,13 @@ while True:
         match cmd:
             case "exit":
                 exit()
-                break
             case "auto":
-                auto = toggle_bool(auto, "automatic command execution")
                 if not auto:
+                    if confirm(f"{colored.Fore.red}Warning: automatic mode will run the AI's suggested commands without your confirmation! Are you sure{colored.Style.reset}"):
+                        auto = toggle_bool(auto, "automatic command execution")
                     hide_cmd = False
+                else:
+                    auto = toggle_bool(auto, "automatic command execution")
             case "hide":
                 if not auto:
                     print("turn on automatic execution first with 'auto'")
@@ -340,7 +335,7 @@ while True:
                     print("already connected!")
                     continue
 
-                using_ai = check_connect(client)
+                using_ai = check_connect(client, config)
             case "disconnect":
                 if not using_ai:
                     print("already disconnected!")
@@ -373,34 +368,59 @@ You can find and target files within the current folder (even nested folders) by
                             continue
 
                 # recursively retrieve the file structure from the current directory and use it to find and target any paths the user has specified with a @
+                activated_target = False
                 dir_tree = False
                 relevant_paths = []
-                for word in cmd_split:
+                for index, word in enumerate(cmd_split):
                     if word[0] == "@":
+                        if not activated_target:
+                            activated_target = True
+
                         print(f"{colored.Fore.sky_blue_1}>> targeting {word[1:]}{colored.Style.reset}")
                         if not dir_tree:
-                            dir_tree = recursive_list(".", max_depth=3)
+                            dir_tree = recursive_list(".")
 
+                        found_items = []
                         for item in dir_tree:
-                            if word[1:] in item:
+                            if word[1:] in os.path.basename(item):
+                                if os.path.isdir(item):
+                                    # add trailing slash
+                                    item += "/"
+
+                                found_items.append(item)
                                 relevant_paths.append(item)
+
+                        if not found_items:
+                            print(f"No paths found for {word}")
+                            continue
+
+                        if not using_ai:
+                            # if AI is disconnected, let the user decide the best path
+                            choices = [(choice, choice) for choice in found_items]
+
+                            cmd_split[index] = prompt_toolkit.shortcuts.choice(
+                                message=f"Please choose a target for {word}:",
+                                options=choices,
+                                default=word
+                            )
+                            continue
+
+                if activated_target and not relevant_paths:
+                    print("No files or folders found")
+                    continue
+
+                # re-join modified command
+                cmd = " ".join(cmd_split)
 
                 if not using_ai:
                     # just execute the command like a normal shell
-
-                    # support basic file targeting
-                    if relevant_paths:
-                        for path in relevant_paths:
-                            print(path)
-                        # dont execute the command if files were targeted with @
-                        continue
-
                     cmd = process_cmd(cmd)
                     if cmd:
                         subprocess.run(cmd, env=env_vars, shell=True, text=True)
                     continue
 
                 if relevant_paths:
+                    # let the AI decide the best path
                     relevant_paths = f"\nYou can find target files at one of these paths: {relevant_paths}"
 
                 prompt = [
@@ -420,7 +440,7 @@ You can find and target files within the current folder (even nested folders) by
 
                 try:
                     stream = client.chat.completions.create(
-                        model="model",
+                        model=config.get("api_model"),
                         messages=prompt,
                         stream=True
                     )
@@ -454,29 +474,46 @@ You can find and target files within the current folder (even nested folders) by
                     ai_cmd = process_cmd(ai_cmd)
                     if ai_cmd:
                         subprocess.run(ai_cmd, env=env_vars, shell=True, text=True)
-                else:
-                    proceed = False
+                    continue
 
-                    if ai_cmd_split[0].lower() in ("sudo", "su"):
-                        if hide_cmd:
-                            print(f">> {ai_cmd}")
+                skip_confirm = False
 
-                        if not confirm(f"{colored.Fore.red}really execute as root{colored.Style.reset}"):
-                            continue
+                # check generated command for unsafe instructions
+                unsafe = False
+                for word in ai_cmd_split:
+                    if word.lower() in ("rm", "del", "delete", "-delete", "--delete", "remove", "-r", "-rf", "dd", "wipe", "shred", "mkfs", "format", "fdisk", "parted", "sh", "bash", "zsh", "csh", "fish", "reboot", "shutdown", "poweroff", "halt"):
+                        unsafe = True
 
-                        proceed = True
+                if unsafe:
+                    if hide_cmd:
+                        print_color(f">> {ai_cmd}", colored.Fore.red)
 
-                    if not auto and not proceed:
-                        if not prompt_toolkit.shortcuts.confirm(f"execute?"):
-                            continue
+                    if not confirm(f"{colored.Fore.red}Warning: Generated command contains potentially unsafe instructions! Please read the command and verify if it is safe to execute. Are you sure?{colored.Style.reset}"):
+                        continue
 
-                    ai_cmd = process_cmd(ai_cmd)
-                    if ai_cmd:
-                        subprocess.run(ai_cmd, env=env_vars, shell=True, text=True)
+                # ask for extra confirmation if the command is a sudo command
+                if ai_cmd_split[0].lower() in ("sudo", "su"):
+                    if hide_cmd:
+                        print(f">> {ai_cmd}")
+
+                    if not confirm(f"{colored.Fore.red}really execute as root{colored.Style.reset}"):
+                        continue
+
+                    skip_confirm = True
+
+                if not auto and not skip_confirm:
+                    if not prompt_toolkit.shortcuts.confirm(f"execute?"):
+                        continue
+
+                # finally, after all those safety checks, go ahead and execute
+                ai_cmd = process_cmd(ai_cmd)
+                if ai_cmd:
+                    subprocess.run(ai_cmd, env=env_vars, shell=True, text=True)
     except KeyboardInterrupt:
         continue
     except Exception as e:
         print_color(f"error: {e}", colored.Fore.red)
+        traceback.print_exc()
         pass
     finally:
         print()
