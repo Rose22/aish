@@ -1,8 +1,10 @@
-# AIsh
+# AI.sh
 
-This is a basic Linux shell that uses your chosen AI model to automatically run linux commands based on what you want. You can also use it like a normal linux shell, with the benefit of the ai auto correcting any typos.
+Wish you could just talk to your Linux shell, get it to do what you want already, without having to fiddle about? With the help of AI.sh and a good LLM, that's a reality!
 
-It connects to any openAI API compatible server (such as a local model, or any openAI server in the cloud)
+This is a Linux shell written in Python that uses your chosen AI model, running either locally on your PC or using a public openAI-compatible API (such as chatGPT), to automatically run linux commands based on what you want. You can basically just ask it to do anything, and without having to know how the linux terminal works, it does it for you! You can also use it like a normal linux shell, with the benefit of the ai auto correcting any typos.
+
+You can also disconnect from the AI and use it like a normal shell. Then reconnect back in whenever you feel like! You can also start it up in disconnected mode, and just not use the AI at all, if you prefer. 
 
 ![aish_demonstration](https://github.com/user-attachments/assets/a1dc6849-3ca4-486c-93a4-c925bbf9cf79)
 
