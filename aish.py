@@ -84,25 +84,24 @@ def process_cmd(cmd):
 
     return cmd
 
-def check_connect(client, config):
+def ai_connect(config):
     print_color("Connecting to AI..", colored.Fore.sky_blue_1)
+    client = openai.OpenAI(base_url=config.data.get("api_url"), api_key=config.data.get("api_key"))
 
     try:
         client.chat.completions.create(
-            model=config.get("api_model"),
+            model=config.data.get("api_model"),
             messages=check_prompt
         )
-        using_ai = True
 
         print_color("Connected!", colored.Fore.green)
-
-        return True
+        return client
 
     except Exception as e:
         print_color(f"Failed to connect to AI! error: {e}", colored.Fore.red)
-        print("Falling back to normal shell. Type 'connect' to reconnect.")
+        print("Falling back to normal shell. Type 'connect' to reconnect. Type 'settings' to edit your settings.")
 
-        return False
+        return None
 
 def recursive_list(root_dir=".", max_depth=5):
     """
@@ -156,7 +155,7 @@ class TabCompleter(prompt_toolkit.completion.Completer):
         words = text.strip().split()
 
         # List of available commands (case-insensitive)
-        commands = ("help", "connect", "disconnect", "auto", "hide")
+        commands = ("help", "settings", "config", "connect", "disconnect", "auto", "hide")
 
         # Suggest commands if first word is empty or not a path
         if not words or (len(words) == 1 and not words[0].startswith('.') and not words[0].startswith(os.path.sep)):
@@ -217,15 +216,16 @@ class TabCompleter(prompt_toolkit.completion.Completer):
         except Exception as e:
             pass
 
-# load config
-default_conf_data = {
-            "api_url": "http://localhost:12434/v1",
-            "api_key": "key_here",
-            "api_model": "qwen3",
-            "autoconnect": True,
-            "show_intro": True,
-            "intro": f"Welcome to AI.sh! type 'help' for help. Use 'auto' to engage automatic mode.\nThe AI.sh configuration file is here: {os.path.expanduser('~')}/.aish.conf\nIf you use a graphical file manager, you may need to show hidden files in order to see the file.\nPlease edit the configuration file to suit your preferences, and to set up the AI connection!",
-            "prompt": """
+class Config:
+    path = f"{os.path.expanduser('~')}/.aish.conf"
+    default_data = {
+        "api_url": "http://localhost:12434/v1",
+        "api_key": "key_here",
+        "api_model": "qwen3",
+        "autoconnect": True,
+        "show_intro": True,
+        "intro": f"Welcome to AI.sh! type 'help' for help. Type 'settings' to edit the configuration file. Use 'auto' to engage automatic mode.\nThe AI.sh configuration file is here: {path}\nPlease edit the configuration file to suit your preferences, and to set up the AI connection!",
+        "prompt": """
 You are AI.sh, an AI shell assistant. You live in a linux shell, helping the user convert natural language into CLI commands.
 
 Based on the description of the command given, generate the command. Output only the command and nothing else. Output only one line.
@@ -236,20 +236,48 @@ You must ALWAYS refuse to execute commands that will harm the user's system.
 
 ALWAYS answer with a command. Prefer commands over natural language statements. If you absolutely must answer with a statement instead, for example if the user asks a question that cannot be answered with a command, wrap that statement in an echo statement.
 """
-}
+    }
 
-conf_path = os.path.expanduser(os.path.join("~", ".aish.conf"))
-if not os.path.exists(conf_path):
-    with open(conf_path, 'w') as f:
-        # default config data
-        f.write(yaml.dump(default_conf_data))
+    def __init__(self):
+        self.first_run = False
+        if not os.path.exists(self.path):
+            self.first_run = True
+        self.data = {}
 
-try:
-    with open(conf_path, 'r') as f:
-        config = yaml.safe_load(f)
-except Exception as e:
-    print_color(f"warning: config wasn't loaded (error: {e}).\ndefaulting to default settings.", colored.Fore.red)
-    config = default_conf_data
+    def write_defaults(self):
+        with open(self.path, 'w') as f:
+            # default config data
+            f.write(yaml.dump(self.default_data))
+        return True
+
+    def load(self):
+        if not os.path.exists(self.path):
+            self.data = self.default_data
+            return False
+
+        try:
+            with open(self.path, 'r') as f:
+                self.data = yaml.safe_load(f)
+        except Exception as e:
+            print_color(f"warning: config wasn't loaded (error: {e}).\ndefaulting to default settings.", colored.Fore.red)
+            self.data = self.default_data
+
+    def launch_editor(self):
+        while True:
+            os.system(f"{os.environ.get('EDITOR', 'nano')} {self.path}")
+            try:
+                with open(self.path, 'r') as f:
+                    self.data = yaml.safe_load(f)
+                print("Config file was valid. Your settings have been saved and loaded into the current session!")
+
+                return True
+            except:
+                print("Your config isn't valid. Press Enter to go back into the editor and edit it again!")
+                input()
+
+# load config
+config = Config()
+config.load()
 
 using_ai = False
 auto = False
@@ -284,13 +312,25 @@ sys_info = {
 
 # -------------
 # MAIN PROGRAM
-client = openai.OpenAI(base_url=config.get("api_url"), api_key=config.get("api_key"))
+client = None
 
-if config.get("show_intro"):
-    print_color(config.get("intro"), colored.Fore.yellow)
+if config.data.get("show_intro"):
+    print_color(config.data.get("intro"), colored.Fore.yellow)
 
-if config.get("autoconnect"):
-    using_ai = check_connect(client, config)
+skip_ai_connect = False
+if config.first_run:
+    config.write_defaults()
+    if prompt_toolkit.shortcuts.confirm("Would you like to set up the configuration now?"):
+        config.launch_editor()
+    else:
+        print("Okay. You can launch the editor at any time by typing 'settings' or 'config'.")
+        print("Once you've set things up, type 'connect' to connect to the AI.")
+        skip_ai_connect = True
+
+if not skip_ai_connect and config.data.get("autoconnect"):
+    client = ai_connect(config)
+    if client:
+        using_ai = True
 
 prompt_style = prompt_toolkit.styles.Style.from_dict({
     'connected': 'fg:ansigreen',
@@ -341,12 +381,18 @@ while True:
                     continue
 
                 hide_cmd = toggle_bool(hide_cmd, "command hiding")
+            case "settings":
+                config.launch_editor()
+            case "config":
+                config.launch_editor()
             case "connect":
                 if using_ai:
                     print("already connected!")
                     continue
 
-                using_ai = check_connect(client, config)
+                client = ai_connect(config)
+                if client:
+                    using_ai = True
             case "disconnect":
                 if not using_ai:
                     print("already disconnected!")
@@ -357,6 +403,7 @@ while True:
             case "help":
                 print("""
 exit:       exit the shell
+settings:   edit the settings
 auto:       toggle auto execution mode (WARNING: dangerous! disables confirmation before running suggested commands. will still ask for confirmation when running root commands)
 hide:       toggle command hiding (hides generated commands prior to running them)
 connect:    reconnect to the AI in case a disconnection occured
@@ -441,7 +488,7 @@ You can find and target files within the current folder (even nested folders) by
                     },
                     {
                         "role": "system",
-                        "content": config.get("prompt")
+                        "content": config.data.get("prompt")
                     },
                     {
                         "role": "user",
@@ -451,7 +498,7 @@ You can find and target files within the current folder (even nested folders) by
 
                 try:
                     stream = client.chat.completions.create(
-                        model=config.get("api_model"),
+                        model=config.data.get("api_model"),
                         messages=prompt,
                         stream=True
                     )
@@ -513,7 +560,7 @@ You can find and target files within the current folder (even nested folders) by
                     skip_confirm = True
 
                 if not auto and not skip_confirm:
-                    if not prompt_toolkit.shortcuts.confirm(f"execute?"):
+                    if not prompt_toolkit.shortcuts.confirm("execute?"):
                         continue
 
                 # finally, after all those safety checks, go ahead and execute
