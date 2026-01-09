@@ -29,6 +29,8 @@ from pygments.lexers.shell import BashLexer
 # --------
 # UTILITY FUNCTIONS
 
+dir_cache = {}
+
 def confirm(prompt):
     while True:
         confirmation = input(f"{prompt}? (y/n)> ").lower()
@@ -81,7 +83,6 @@ def process_cmd(cmd):
     cmd = " ".join(cmd_split)
 
     return cmd
-import os
 
 def check_connect(client, config):
     print_color("Connecting to AI..", colored.Fore.sky_blue_1)
@@ -129,6 +130,15 @@ def recursive_list(root_dir=".", max_depth=5):
     
     _list_items(root_dir, 0)  # Start at depth 0 (root)
     return items
+
+def get_dir_list(path):
+    """
+        caches recursive lists in memory so they don't need to keep being re-fetched
+    """
+
+    if path not in dir_cache:
+        dir_cache[path] = recursive_list(path)
+    return dir_cache[path]
 
 # --------
 # INITIALIZATION
@@ -374,7 +384,7 @@ You can find and target files within the current folder (even nested folders) by
 
                         print(f"{colored.Fore.sky_blue_1}>> targeting {word[1:]}{colored.Style.reset}")
                         if not dir_tree:
-                            dir_tree = recursive_list(".")
+                            dir_tree = get_dir_list(os.getcwd())
 
                         found_items = []
                         for item in dir_tree:
