@@ -71,7 +71,7 @@ def process_cmd(cmd):
             os.chdir(target_path)
             return None
         case "exit":
-            exit()
+            sys.exit()
             return None
 
     # substitute certain commands for different ones
@@ -367,7 +367,7 @@ while True:
 
         match cmd:
             case "exit":
-                exit()
+                sys.exit()
             case "auto":
                 if not auto:
                     if confirm(f"{colored.Fore.red}Warning: automatic mode will run the AI's suggested commands without your confirmation! Are you sure{colored.Style.reset}"):
